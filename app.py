@@ -1,54 +1,58 @@
 import os
+import subprocess
 import streamlit as st
-from docx2pdf import convert
 
-# Page config
+# Page configuration
 st.set_page_config(page_title="Word to PDF Converter", page_icon="📄", layout="centered")
 
 st.title("📄 Word to PDF Converter")
-st.write("Convert your Microsoft Word documents (.docx) into PDF format instantly.")
+st.write("Easily convert your Word documents (.docx) into PDF format.")
 
-# Divider for clean UI look
 st.markdown("---")
 
 # File uploader
 uploaded_file = st.file_uploader("Upload your .docx file", type=["docx"])
 
 if uploaded_file is not None:
-    # Set up temp paths
+    # Save the uploaded file locally
     input_path = "temp_input.docx"
     output_path = "temp_output.pdf"
     
-    # Save uploaded file locally
     with open(input_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
         
-    st.info(f"File uploaded: **{uploaded_file.name}**")
+    st.info(f"Loaded: **{uploaded_file.name}**")
     
-    # Conversion trigger button
-    if st.button("Convert File"):
-        with st.spinner("Converting document to PDF..."):
+    if st.button("Convert to PDF"):
+        with st.spinner("Converting document... please wait."):
             try:
-                # Perform the conversion using docx2pdf
-                convert(input_path, output_path)
+                # Use LibreOffice in headless mode (works on Linux/Cloud environments)
+                process = subprocess.run(
+                    ["libreoffice", "--headless", "--convert-to", "pdf", input_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
                 
-                st.success("Conversion successful!")
-                
-                # Read the resulting PDF for download
-                with open(output_path, "rb") as pdf_file:
-                    st.download_button(
-                        label="📥 Download PDF",
-                        data=pdf_file,
-                        file_name=uploaded_file.name.replace(".docx", ".pdf"),
-                        mime="application/pdf"
-                    )
+                if process.returncode == 0:
+                    st.success("Conversion complete!")
+                    
+                    # Read the converted PDF
+                    with open(output_path, "rb") as pdf_file:
+                        st.download_button(
+                            label="📥 Download Converted PDF",
+                            data=pdf_file,
+                            file_name=uploaded_file.name.replace(".docx", ".pdf"),
+                            mime="application/pdf"
+                        )
+                else:
+                    st.error("Conversion failed. Make sure LibreOffice is installed on the system.")
+                    
             except Exception as e:
-                st.error(f"Error during conversion: {e}")
+                st.error(f"An unexpected error occurred: {e}")
             finally:
-                # Cleanup input file if needed
+                # Cleanup temporary docx file
                 if os.path.exists(input_path):
                     os.remove(input_path)
 
-# Simple footer
 st.markdown("---")
-st.caption("Built with Streamlit & docx2pdf")
+st.caption("Powered by Streamlit & LibreOffice")

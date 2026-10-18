@@ -16,7 +16,7 @@ uploaded_file = st.file_uploader("Upload your .docx file", type=["docx"])
 if uploaded_file is not None:
     # Save the uploaded file locally
     input_path = "temp_input.docx"
-    output_path = "temp_output.pdf"
+    output_path = "temp_input.pdf"  # LibreOffice automatically names output after input stem
     
     with open(input_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
@@ -26,14 +26,14 @@ if uploaded_file is not None:
     if st.button("Convert to PDF"):
         with st.spinner("Converting document... please wait."):
             try:
-                # Use LibreOffice in headless mode (works on Linux/Cloud environments)
+                # Use LibreOffice in headless mode
                 process = subprocess.run(
                     ["libreoffice", "--headless", "--convert-to", "pdf", input_path],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
                 
-                if process.returncode == 0:
+                if process.returncode == 0 and os.path.exists(output_path):
                     st.success("Conversion complete!")
                     
                     # Read the converted PDF
@@ -45,14 +45,16 @@ if uploaded_file is not None:
                             mime="application/pdf"
                         )
                 else:
-                    st.error("Conversion failed. Make sure LibreOffice is installed on the system.")
+                    st.error(f"Conversion failed. Error: {process.stderr.decode('utf-8')}")
                     
             except Exception as e:
                 st.error(f"An unexpected error occurred: {e}")
             finally:
-                # Cleanup temporary docx file
+                # Cleanup temporary files
                 if os.path.exists(input_path):
                     os.remove(input_path)
+                if os.path.exists(output_path):
+                    os.remove(output_path)
 
 st.markdown("---")
 st.caption("Powered by Streamlit & LibreOffice")
